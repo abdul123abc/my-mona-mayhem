@@ -1,17 +1,1515 @@
 ---
-
 ---
 
-<html lang="en">
+<html lang="en" data-theme="classic">
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Mona Mayhem</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+		<title>Mona Mayhem - GitHub Contribution Battle Arena</title>
+		<style>
+			:root {
+				--arcade-bg: #0a0a1a;
+				--arcade-surface: rgba(15, 15, 42, 0.88);
+				--arcade-green: #5fed83;
+				--arcade-purple: #8a2be2;
+				--arcade-primary-rgb: 95, 237, 131;
+				--arcade-secondary-rgb: 138, 43, 226;
+				--arcade-text: #f4f4ff;
+				--arcade-muted: #a7a7c7;
+				--arcade-border: rgba(var(--arcade-primary-rgb), 0.35);
+				--graph-empty: #ebedf0;
+				--graph-level-one: #9be9a8;
+				--graph-level-two: #40c463;
+				--graph-level-three: #30a14e;
+				--graph-level-four: #216e39;
+				font-family: Arial, sans-serif;
+				color: var(--arcade-text);
+				background: var(--arcade-bg);
+			}
+
+			.countdown-overlay {
+				position: fixed;
+				z-index: 10;
+				inset: 0;
+				display: grid;
+				place-items: center;
+				background: rgba(10, 10, 26, 0.82);
+				backdrop-filter: blur(6px);
+			}
+
+			.countdown-overlay[hidden] {
+				display: none;
+			}
+
+			.countdown-overlay span {
+				color: var(--arcade-green);
+				font-family: 'Press Start 2P', monospace;
+				font-size: clamp(3rem, 16vw, 9rem);
+				line-height: 1;
+				text-align: center;
+				text-shadow: 0 0 12px var(--arcade-green), 0 0 38px var(--arcade-purple);
+				animation: countdown-pop 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+			}
+
+			.countdown-overlay.fight span {
+				color: var(--arcade-purple);
+				font-size: clamp(1.5rem, 8vw, 4.5rem);
+			}
+
+			.result-reveal {
+				animation: result-slide-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+			}
+
+			#player-two-result.result-reveal {
+				animation-delay: 120ms;
+			}
+
+			:root[data-theme='alternate'] {
+				--arcade-green: #00f5ff;
+				--arcade-purple: #ff6b35;
+				--arcade-primary-rgb: 0, 245, 255;
+				--arcade-secondary-rgb: 255, 107, 53;
+				--graph-empty: #172733;
+				--graph-level-one: #5ffaff;
+				--graph-level-two: #00f5ff;
+				--graph-level-three: #ff9a76;
+				--graph-level-four: #ff6b35;
+			}
+
+			:root[data-theme='sunset'] {
+				--arcade-green: #ff4ecd;
+				--arcade-purple: #ff9f1c;
+				--arcade-primary-rgb: 255, 78, 205;
+				--arcade-secondary-rgb: 255, 159, 28;
+				--graph-empty: #2b1938;
+				--graph-level-one: #ffb3e8;
+				--graph-level-two: #ff72d2;
+				--graph-level-three: #ff4ecd;
+				--graph-level-four: #c72c91;
+			}
+
+			:root[data-theme='ocean'] {
+				--arcade-green: #4dd9ff;
+				--arcade-purple: #7b61ff;
+				--arcade-primary-rgb: 77, 217, 255;
+				--arcade-secondary-rgb: 123, 97, 255;
+				--graph-empty: #17243d;
+				--graph-level-one: #9de9ff;
+				--graph-level-two: #4dd9ff;
+				--graph-level-three: #338cff;
+				--graph-level-four: #5540c8;
+			}
+
+			@keyframes countdown-pop {
+				from {
+					opacity: 0;
+					transform: scale(0.35);
+				}
+				60% {
+					opacity: 1;
+					transform: scale(1.12);
+				}
+				to {
+					opacity: 1;
+					transform: scale(1);
+				}
+			}
+
+			@keyframes result-slide-in {
+				from {
+					opacity: 0;
+					transform: translateY(36px) scale(0.96);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0) scale(1);
+				}
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			body {
+				position: relative;
+				margin: 0;
+				min-height: 100vh;
+				background:
+					radial-gradient(circle at 15% 15%, rgba(var(--arcade-secondary-rgb), 0.25), transparent 28rem),
+					radial-gradient(circle at 85% 85%, rgba(var(--arcade-primary-rgb), 0.13), transparent 30rem),
+					var(--arcade-bg);
+				overflow-x: hidden;
+			}
+
+			body::before {
+				position: fixed;
+				z-index: 0;
+				inset: 0;
+				background: repeating-linear-gradient(
+					to bottom,
+					rgba(255, 255, 255, 0.035) 0,
+					rgba(255, 255, 255, 0.035) 1px,
+					transparent 1px,
+					transparent 4px
+				);
+				content: '';
+				pointer-events: none;
+			}
+
+			.arena {
+				position: relative;
+				z-index: 1;
+				width: min(100% - 2rem, 1100px);
+				margin: 0 auto;
+				padding: 3rem 0;
+			}
+
+			.hero {
+				margin-bottom: 2rem;
+				text-align: center;
+			}
+
+			.eyebrow {
+				margin: 0 0 0.5rem;
+				color: var(--arcade-green);
+				font-family: 'Press Start 2P', monospace;
+				font-size: 0.7rem;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+			}
+
+			h1 {
+				margin: 0;
+				color: var(--arcade-green);
+				font-family: 'Press Start 2P', monospace;
+				font-size: clamp(2rem, 5vw, 3.5rem);
+				line-height: 1.4;
+				text-shadow:
+					0 0 5px var(--arcade-green),
+					0 0 18px var(--arcade-green),
+					0 0 38px var(--arcade-purple);
+				animation: neon-pulse 2.6s ease-in-out infinite alternate;
+			}
+
+			.intro {
+				color: var(--arcade-muted);
+			}
+
+			.battle-form {
+				display: grid;
+				grid-template-columns: 1fr auto 1fr;
+				gap: 1rem;
+				align-items: end;
+				max-width: 800px;
+				margin: 0 auto 1rem;
+			}
+
+			.player-input {
+				display: grid;
+				gap: 0.4rem;
+				animation: float-in 700ms ease-out both;
+			}
+
+			.player-input:nth-child(3) {
+				animation-delay: 140ms;
+			}
+
+			label {
+				color: var(--arcade-green);
+				font-family: 'Press Start 2P', monospace;
+				font-size: 0.65rem;
+				font-weight: 700;
+			}
+
+			input {
+				width: 100%;
+				padding: 0.75rem;
+				border: 2px solid var(--arcade-border);
+				border-radius: 6px;
+				font: inherit;
+				color: var(--arcade-text);
+				background: rgba(10, 10, 26, 0.9);
+				outline: none;
+				transition: border-color 180ms ease, box-shadow 180ms ease;
+			}
+
+			input:focus-visible {
+				border-color: var(--arcade-green);
+				box-shadow: 0 0 0 4px rgba(var(--arcade-primary-rgb), 0.18), 0 0 24px rgba(var(--arcade-primary-rgb), 0.35);
+				outline: 3px solid var(--arcade-green);
+				outline-offset: 3px;
+			}
+
+			input[aria-invalid='true'] {
+				border-color: #ff4d8d;
+				box-shadow: 0 0 0 4px rgba(255, 77, 141, 0.16), 0 0 20px rgba(255, 77, 141, 0.55);
+				animation: error-glitch 420ms ease-out;
+			}
+
+			.field-error {
+				min-height: 1rem;
+				margin: 0;
+				color: #ff8bb5;
+				font-size: 0.8rem;
+				font-weight: 700;
+				text-shadow: 0 0 8px rgba(255, 77, 141, 0.8);
+			}
+
+			button {
+				grid-column: 1 / -1;
+				justify-self: center;
+				padding: 0.75rem 1.5rem;
+				border: 0;
+				border-radius: 6px;
+				color: #fff;
+				background: linear-gradient(120deg, var(--arcade-green), var(--arcade-purple), var(--arcade-green));
+				background-size: 220% 100%;
+				cursor: pointer;
+				font: inherit;
+				font-family: 'Press Start 2P', monospace;
+				font-size: 0.7rem;
+				font-weight: 700;
+				box-shadow: 0 0 22px rgba(var(--arcade-secondary-rgb), 0.45);
+				transition: transform 180ms ease, box-shadow 180ms ease;
+				animation: gradient-shift 4s ease infinite;
+			}
+
+			button:hover:not(:disabled) {
+				transform: translateY(-2px) scale(1.03);
+				box-shadow: 0 0 32px rgba(var(--arcade-primary-rgb), 0.7);
+			}
+
+			button:focus-visible,
+			.result-card h2 a:focus-visible,
+			.day:focus-visible {
+				outline: 3px solid var(--arcade-green);
+				outline-offset: 3px;
+			}
+
+			button:disabled {
+				cursor: wait;
+				opacity: 0.65;
+			}
+
+			button.theme-toggle {
+				display: inline-flex;
+				grid-column: auto;
+				align-items: center;
+				gap: 0.45rem;
+				margin-top: 0.5rem;
+				padding: 0.55rem 0.8rem;
+				border: 1px solid var(--arcade-border);
+				color: var(--arcade-text);
+				background: rgba(var(--arcade-primary-rgb), 0.08);
+				font-family: Arial, sans-serif;
+				font-size: 0.8rem;
+				box-shadow: 0 0 14px rgba(var(--arcade-secondary-rgb), 0.28);
+				animation: none;
+			}
+
+			.share-actions {
+				display: flex;
+				justify-content: center;
+				min-height: 2.5rem;
+				margin-top: 1rem;
+			}
+
+			.share-results {
+				grid-column: auto;
+				padding: 0.7rem 1rem;
+				font-size: 0.7rem;
+				animation: none;
+			}
+
+			button.theme-toggle:hover:not(:disabled) {
+				box-shadow: 0 0 22px rgba(var(--arcade-primary-rgb), 0.5);
+			}
+
+			.sound-toggle {
+				margin-left: 0.5rem;
+			}
+
+			.versus-input,
+			.battle-mark {
+				color: var(--arcade-green);
+				font-family: 'Press Start 2P', monospace;
+				font-size: 0.8rem;
+				font-weight: 800;
+				text-shadow: 0 0 14px var(--arcade-green), 0 0 28px var(--arcade-purple);
+				animation: vs-shift 3s ease-in-out infinite alternate;
+			}
+
+			.status,
+			.winner {
+				min-height: 1.5rem;
+				margin: 1rem 0;
+				text-align: center;
+				font-weight: 700;
+			}
+
+			.status.error,
+			.error {
+				color: #ff6b9d;
+				text-shadow: 0 0 8px rgba(255, 77, 141, 0.8), 0 0 18px rgba(var(--arcade-secondary-rgb), 0.65);
+				animation: error-flicker 1.8s steps(2, end) infinite;
+			}
+
+			.status.success,
+			.winner {
+				color: #7dffa1;
+				text-shadow: 0 0 8px rgba(var(--arcade-primary-rgb), 0.7);
+			}
+
+			.winner {
+				position: relative;
+				isolation: isolate;
+				display: grid;
+				place-items: center;
+				width: min(100%, 900px);
+				margin: 2rem auto 1rem;
+				padding: 1.25rem;
+				border: 3px solid var(--arcade-green);
+				border-radius: 0;
+				background: linear-gradient(90deg, transparent, rgba(var(--arcade-primary-rgb), 0.22) 12%, rgba(var(--arcade-secondary-rgb), 0.3) 50%, rgba(var(--arcade-primary-rgb), 0.22) 88%, transparent);
+				font-family: 'Press Start 2P', monospace;
+				font-size: clamp(0.75rem, 2.4vw, 1.3rem);
+				letter-spacing: 0.08em;
+				text-shadow: 0 0 8px var(--arcade-green), 0 0 22px var(--arcade-purple);
+				box-shadow: 0 0 18px rgba(var(--arcade-primary-rgb), 0.55), 0 0 42px rgba(var(--arcade-secondary-rgb), 0.35);
+				transform-origin: center;
+				clip-path: polygon(4% 0, 96% 0, 100% 50%, 96% 100%, 4% 100%, 0 50%);
+			}
+
+			.winner-label {
+				position: relative;
+				z-index: 1;
+				display: block;
+			}
+
+			.winner.win {
+				color: var(--arcade-green);
+				animation: winner-reveal 800ms cubic-bezier(0.16, 1, 0.3, 1) both, winner-glow 1.4s 800ms ease-in-out infinite alternate;
+			}
+
+			.winner.tie {
+				color: #f9d65c;
+				border-color: #f9d65c;
+				background: linear-gradient(90deg, transparent, rgba(249, 214, 92, 0.2) 12%, rgba(var(--arcade-secondary-rgb), 0.3) 50%, rgba(249, 214, 92, 0.2) 88%, transparent);
+				text-shadow: 0 0 8px #f9d65c, 0 0 22px var(--arcade-purple);
+				animation: winner-reveal 800ms cubic-bezier(0.16, 1, 0.3, 1) both, tie-glow 1.8s 800ms ease-in-out infinite alternate;
+			}
+
+			.history {
+				margin-top: 3rem;
+				padding: 1.25rem;
+				border: 1px solid var(--arcade-border);
+				border-radius: 12px;
+				background: rgba(15, 15, 42, 0.72);
+				box-shadow: 0 14px 35px rgba(0, 0, 0, 0.35);
+			}
+
+			.history-heading {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 1rem;
+				margin-bottom: 1rem;
+			}
+
+			.history-heading h2 {
+				margin: 0;
+				color: var(--arcade-green);
+				font-family: 'Press Start 2P', monospace;
+				font-size: 0.85rem;
+				text-shadow: 0 0 10px rgba(var(--arcade-primary-rgb), 0.65);
+			}
+
+			.clear-history {
+				grid-column: auto;
+				padding: 0.55rem 0.8rem;
+				font-family: Arial, sans-serif;
+				font-size: 0.8rem;
+				animation: none;
+			}
+
+			.history-empty {
+				margin: 0;
+				color: var(--arcade-muted);
+			}
+
+			.battle-history {
+				display: grid;
+				gap: 0.75rem;
+				margin: 0;
+				padding: 0;
+				list-style: none;
+			}
+
+			.battle-history li {
+				display: grid;
+				grid-template-columns: 1fr auto;
+				gap: 0.25rem 1rem;
+				padding: 0.85rem;
+				border: 1px solid rgba(var(--arcade-primary-rgb), 0.2);
+				border-radius: 8px;
+				background: rgba(var(--arcade-primary-rgb), 0.05);
+			}
+
+			.battle-players {
+				color: var(--arcade-text);
+				font-weight: 700;
+			}
+
+			.battle-winner {
+				color: var(--arcade-green);
+				font-weight: 700;
+				text-shadow: 0 0 8px rgba(var(--arcade-primary-rgb), 0.55);
+			}
+
+			.battle-time {
+				grid-column: 2;
+				grid-row: 1 / span 2;
+				align-self: center;
+				color: var(--arcade-muted);
+				font-size: 0.8rem;
+				text-align: right;
+			}
+
+			.streak {
+				margin: 1rem 0 0;
+				color: var(--arcade-green);
+				font-family: 'Press Start 2P', monospace;
+				font-size: 0.68rem;
+				line-height: 1.6;
+				text-shadow: 0 0 8px rgba(var(--arcade-primary-rgb), 0.65);
+			}
+
+			:global(.contribution-legend) {
+				display: flex;
+				align-items: center;
+				gap: 0.45rem;
+				margin-top: 0.75rem;
+				color: var(--arcade-muted);
+				font-size: 0.7rem;
+			}
+
+			:global(.legend-swatches) {
+				display: inline-flex;
+				gap: 0.2rem;
+			}
+
+			:global(.legend-swatch) {
+				width: 11px;
+				height: 11px;
+				border: 1px solid rgba(255, 255, 255, 0.2);
+				border-radius: 2px;
+				box-shadow: 0 0 5px rgba(var(--arcade-primary-rgb), 0.25);
+			}
+
+			.status.loading {
+				color: var(--arcade-green);
+				animation: loading-shift 1.2s ease-in-out infinite alternate;
+			}
+
+			.results {
+				display: grid;
+				grid-template-columns: 1fr auto 1fr;
+				gap: 1rem;
+				align-items: center;
+			}
+
+			.result-card {
+				position: relative;
+				overflow: hidden;
+				min-width: 0;
+				padding: 1rem;
+				border: 1px solid var(--arcade-border);
+				border-radius: 12px;
+				background: var(--arcade-surface);
+				box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45), inset 0 1px rgba(255, 255, 255, 0.12);
+				backdrop-filter: blur(12px);
+				transition: transform 180ms ease, border-color 180ms ease;
+			}
+
+			.result-card::before {
+				position: absolute;
+				z-index: 0;
+				inset: 0;
+				background: linear-gradient(110deg, transparent 25%, rgba(255, 255, 255, 0.18) 48%, transparent 70%);
+				background-size: 220% 100%;
+				content: '';
+				pointer-events: none;
+				animation: card-shimmer 5s ease-in-out infinite;
+			}
+
+			.result-card > * {
+				position: relative;
+				z-index: 1;
+			}
+
+			.result-card:hover {
+				transform: translateY(-4px);
+				border-color: var(--arcade-green);
+			}
+
+			.result-card.has-error {
+				border-color: #ff4d8d;
+				background:
+					linear-gradient(135deg, rgba(255, 77, 141, 0.14), transparent 55%),
+					var(--arcade-surface);
+				box-shadow:
+					0 0 12px rgba(255, 77, 141, 0.55),
+					0 0 34px rgba(var(--arcade-secondary-rgb), 0.35),
+					inset 0 0 18px rgba(255, 77, 141, 0.12);
+				animation: error-card-pulse 1.8s ease-in-out infinite alternate;
+			}
+
+			.result-card.has-error h2 {
+				color: #ff8bb5;
+				text-shadow: 0 0 8px #ff4d8d, 0 0 18px var(--arcade-purple);
+			}
+
+			.result-card.has-error .error {
+				margin: 0.35rem 0;
+			}
+
+			.result-card.has-error .error-hint {
+				color: var(--arcade-muted);
+				font-size: 0.85rem;
+			}
+
+			.result-card h2 {
+				margin: 0 0 0.75rem;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+
+			.result-card h2 a {
+				color: inherit;
+			}
+
+			.result-content {
+				min-height: 8rem;
+			}
+
+			.placeholder,
+			.date-range {
+				color: var(--arcade-muted);
+			}
+
+			.total {
+				margin: 0;
+			}
+
+			.total strong {
+				font-size: 1.5rem;
+			}
+
+			.date-range {
+				font-size: 0.875rem;
+			}
+
+			.graph {
+				display: grid;
+				grid-template-columns: repeat(53, 10px);
+				grid-auto-flow: column;
+				grid-template-rows: repeat(7, 10px);
+				gap: 2px;
+				max-width: 100%;
+				margin-top: 1rem;
+				overflow-x: auto;
+				padding-bottom: 0.25rem;
+			}
+
+			.day {
+				display: block;
+				width: 10px;
+				height: 10px;
+				border-radius: 2px;
+				box-shadow: 0 0 5px rgba(var(--arcade-primary-rgb), 0.25);
+				transition: transform 140ms ease, box-shadow 140ms ease;
+			}
+
+			.day:hover {
+				transform: scale(1.5);
+				z-index: 1;
+				box-shadow: 0 0 10px var(--arcade-green), 0 0 16px var(--arcade-purple);
+			}
+
+			.day:focus-visible {
+				transform: scale(1.5);
+				z-index: 1;
+				box-shadow: 0 0 10px var(--arcade-green), 0 0 16px var(--arcade-purple);
+			}
+
+			@keyframes neon-pulse {
+				0%,
+				100% {
+					opacity: 0.86;
+					text-shadow: 0 0 5px var(--arcade-green), 0 0 14px var(--arcade-green), 0 0 28px var(--arcade-purple);
+				}
+				100% {
+					opacity: 1;
+					text-shadow: 0 0 8px var(--arcade-green), 0 0 24px var(--arcade-green), 0 0 48px var(--arcade-purple);
+				}
+			}
+
+			@keyframes gradient-shift {
+				0%,
+				100% {
+					background-position: 0% 50%;
+				}
+				50% {
+					background-position: 100% 50%;
+				}
+			}
+
+			@keyframes vs-shift {
+				0% {
+					color: var(--arcade-green);
+					transform: scale(1);
+				}
+				100% {
+					color: var(--arcade-purple);
+					transform: scale(1.12);
+				}
+			}
+
+			@keyframes float-in {
+				from {
+					opacity: 0;
+					transform: translateY(18px);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0);
+				}
+			}
+
+			@keyframes loading-shift {
+				from {
+					color: var(--arcade-green);
+					text-shadow: 0 0 8px var(--arcade-green);
+				}
+				to {
+					color: var(--arcade-purple);
+					text-shadow: 0 0 8px var(--arcade-purple);
+				}
+			}
+
+			@keyframes error-glitch {
+				0%,
+				100% {
+					transform: translateX(0);
+				}
+				25% {
+					transform: translateX(-3px);
+				}
+				75% {
+					transform: translateX(3px);
+				}
+			}
+
+			@keyframes error-flicker {
+				0%,
+				100% {
+					opacity: 1;
+				}
+				50% {
+					opacity: 0.72;
+				}
+			}
+
+			@keyframes error-card-pulse {
+				from {
+					box-shadow: 0 0 10px rgba(255, 77, 141, 0.45), 0 0 26px rgba(var(--arcade-secondary-rgb), 0.25), inset 0 0 14px rgba(255, 77, 141, 0.08);
+				}
+				to {
+					box-shadow: 0 0 18px rgba(255, 77, 141, 0.75), 0 0 42px rgba(var(--arcade-secondary-rgb), 0.45), inset 0 0 22px rgba(255, 77, 141, 0.18);
+				}
+			}
+
+			@keyframes card-shimmer {
+				0%,
+				45% {
+					background-position: 220% 0;
+				}
+				70%,
+				100% {
+					background-position: -20% 0;
+				}
+			}
+
+			@keyframes winner-reveal {
+				from {
+					opacity: 0;
+					transform: scale(0.2);
+				}
+				60% {
+					opacity: 1;
+					transform: scale(1.08);
+				}
+				to {
+					opacity: 1;
+					transform: scale(1);
+				}
+			}
+
+			@keyframes winner-glow {
+				from {
+					box-shadow: 0 0 14px rgba(var(--arcade-primary-rgb), 0.45), 0 0 30px rgba(var(--arcade-secondary-rgb), 0.3);
+				}
+				to {
+					box-shadow: 0 0 24px rgba(var(--arcade-primary-rgb), 0.8), 0 0 48px rgba(var(--arcade-secondary-rgb), 0.55);
+				}
+			}
+
+			@keyframes tie-glow {
+				from {
+					box-shadow: 0 0 10px rgba(249, 214, 92, 0.45);
+				}
+				to {
+					box-shadow: 0 0 24px rgba(249, 214, 92, 0.8), 0 0 38px rgba(var(--arcade-secondary-rgb), 0.4);
+				}
+			}
+
+			@media (max-width: 1024px) {
+				.results {
+					grid-template-columns: 1fr;
+				}
+
+				.battle-mark {
+					justify-self: center;
+				}
+
+				.winner {
+					width: min(100%, 900px);
+					font-size: 0.65rem;
+				}
+			}
+
+			@media (max-width: 700px) {
+				.battle-form {
+					grid-template-columns: 1fr;
+				}
+
+				.versus-input {
+					justify-self: center;
+				}
+
+				.history-heading,
+				.battle-history li {
+					grid-template-columns: 1fr;
+				}
+
+				.history-heading {
+					align-items: stretch;
+					flex-direction: column;
+				}
+
+				.battle-time {
+					grid-column: auto;
+					grid-row: auto;
+					text-align: left;
+				}
+			}
+
+			@media (prefers-reduced-motion: reduce) {
+				h1,
+				.player-input,
+				button,
+				.versus-input,
+				.battle-mark,
+				.status.loading,
+				.status.error,
+				input[aria-invalid='true'],
+				.result-card.has-error,
+				.result-card::before,
+				.winner.win,
+				.winner.tie {
+					animation: none;
+				}
+
+				.countdown-overlay span,
+				.result-reveal {
+					animation: none;
+				}
+
+				button,
+				.result-card,
+				.day {
+					transition: none;
+				}
+
+				.result-card:hover,
+				.day:hover,
+				.day:focus-visible {
+					transform: none;
+				}
+			}
+		</style>
 	</head>
 	<body>
-		<h1>Mona Mayhem</h1>
-		<p>Welcome to Mona Mayhem! Time to build a GitHub Contribution Battle Arena.</p>
-	</body>
+		<main class="arena">
+			<header class="hero">
+				<p class="eyebrow">🎮 Mona Mayhem</p>
+				<h1>GitHub Contribution Battle Arena</h1>
+				<p class="intro">Choose two GitHub users and see who has the strongest contribution streak.</p>
+				<button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false" aria-label="Change color theme">
+					<span aria-hidden="true">◐</span> Theme: Green / Purple
+				</button>
+				<button id="sound-toggle" class="theme-toggle sound-toggle" type="button" aria-pressed="false" aria-label="Mute arcade sound effects">
+					<span aria-hidden="true">🔊</span> Sound: On
+				</button>
+			</header>
+
+			<form id="battle-form" class="battle-form">
+				<div class="player-input">
+					<label for="player-one">Player 1</label>
+					<input id="player-one" name="playerOne" type="text" placeholder="octocat" autocomplete="off" aria-describedby="player-one-error" />
+					<p id="player-one-error" class="field-error" aria-live="polite"></p>
+				</div>
+				<div class="versus-input" aria-hidden="true">VS</div>
+				<div class="player-input">
+					<label for="player-two">Player 2</label>
+					<input id="player-two" name="playerTwo" type="text" placeholder="github" autocomplete="off" aria-describedby="player-two-error" />
+					<p id="player-two-error" class="field-error" aria-live="polite"></p>
+				</div>
+				<button id="battle-button" type="submit">⚔️ Battle!</button>
+			</form>
+
+			<p id="status" class="status" role="status" aria-live="polite"></p>
+			<section id="results" class="results" aria-live="polite" aria-label="Battle results">
+				<article id="player-one-result" class="result-card">
+					<h2>Player 1</h2>
+					<div class="result-content">
+						<p class="placeholder">Enter a username to begin.</p>
+					</div>
+				</article>
+				<div class="battle-mark" aria-hidden="true">VS</div>
+				<article id="player-two-result" class="result-card">
+					<h2>Player 2</h2>
+					<div class="result-content">
+						<p class="placeholder">Enter a username to begin.</p>
+					</div>
+				</article>
+			</section>
+			<p id="winner" class="winner" hidden><span class="winner-label"></span></p>
+			<div class="share-actions">
+				<button id="share-results" class="share-results" type="button" hidden>📋 Share Results</button>
+			</div>
+			<section class="history" aria-labelledby="history-title">
+				<div class="history-heading">
+					<h2 id="history-title">Recent Battles</h2>
+					<button id="clear-history" class="clear-history" type="button">Clear History</button>
+				</div>
+				<p id="history-empty" class="history-empty">No battles recorded yet.</p>
+				<ul id="battle-history" class="battle-history"></ul>
+			</section>
+		</main>
+		<div id="countdown-overlay" class="countdown-overlay" hidden role="status" aria-live="assertive" aria-atomic="true">
+			<span id="countdown-label">3...</span>
+		</div>
+		<script>
+	interface ContributionDay {
+		weekday: number;
+		count: number;
+		level: number;
+	}
+
+	interface ContributionWeek {
+		index: number;
+		first_day: string;
+		contribution_days: ContributionDay[];
+	}
+
+	interface ContributionData {
+		schema: string;
+		generated_at: string;
+		from: string;
+		to: string;
+		total_contributions: number;
+		weeks: ContributionWeek[];
+	}
+
+	const form = document.querySelector<HTMLFormElement>('#battle-form');
+	const playerOneInput = document.querySelector<HTMLInputElement>('#player-one');
+	const playerTwoInput = document.querySelector<HTMLInputElement>('#player-two');
+	const fieldErrors = [
+		document.querySelector<HTMLParagraphElement>('#player-one-error'),
+		document.querySelector<HTMLParagraphElement>('#player-two-error'),
+	];
+	const battleButton = document.querySelector<HTMLButtonElement>('#battle-button');
+	const status = document.querySelector<HTMLParagraphElement>('#status');
+	const winner = document.querySelector<HTMLParagraphElement>('#winner');
+	const countdownOverlay = document.querySelector<HTMLDivElement>('#countdown-overlay');
+	const countdownLabel = document.querySelector<HTMLSpanElement>('#countdown-label');
+	const shareResultsButton = document.querySelector<HTMLButtonElement>('#share-results');
+	const themeToggle = document.querySelector<HTMLButtonElement>('#theme-toggle');
+	const soundToggle = document.querySelector<HTMLButtonElement>('#sound-toggle');
+	const clearHistoryButton = document.querySelector<HTMLButtonElement>('#clear-history');
+	const historyEmpty = document.querySelector<HTMLParagraphElement>('#history-empty');
+	const battleHistory = document.querySelector<HTMLUListElement>('#battle-history');
+	const resultCards = [
+		document.querySelector<HTMLElement>('#player-one-result'),
+		document.querySelector<HTMLElement>('#player-two-result'),
+	];
+	const colors = ['var(--graph-empty)', 'var(--graph-level-one)', 'var(--graph-level-two)', 'var(--graph-level-three)', 'var(--graph-level-four)'];
+
+	if (!form || !playerOneInput || !playerTwoInput || !battleButton || !status || !winner || !countdownOverlay || !countdownLabel || !shareResultsButton || !themeToggle || !soundToggle || !clearHistoryButton || !historyEmpty || !battleHistory || resultCards.some((card) => !card) || fieldErrors.some((error) => !error)) {
+		throw new Error('Battle page could not initialize.');
+	}
+
+	const cards = resultCards as HTMLElement[];
+	const errors = fieldErrors as HTMLParagraphElement[];
+	const root = document.documentElement;
+	const themeStorageKey = 'mona-mayhem-theme';
+	const soundStorageKey = 'mona-mayhem-sound-muted';
+	const historyStorageKey = 'mona-mayhem-battle-history';
+	const maxHistoryEntries = 10;
+	let currentBattleSummary = '';
+
+	interface BattleHistoryEntry {
+		playerOne: string;
+		playerTwo: string;
+		playerOneTotal: number;
+		playerTwoTotal: number;
+		winner: string | null;
+		createdAt: string;
+	}
+
+	const themes = [
+		{ id: 'classic', label: 'Green / Purple', icon: '◐' },
+		{ id: 'alternate', label: 'Cyan / Orange', icon: '◑' },
+		{ id: 'sunset', label: 'Pink / Gold', icon: '◒' },
+		{ id: 'ocean', label: 'Blue / Indigo', icon: '◓' },
+	] as const;
+	type ThemeId = (typeof themes)[number]['id'];
+
+	function setTheme(theme: ThemeId) {
+		const selectedTheme = themes.find((option) => option.id === theme) ?? themes[0];
+		root.dataset.theme = theme;
+		themeToggle.setAttribute('aria-pressed', 'false');
+		themeToggle.setAttribute('aria-label', 'Change color theme');
+		themeToggle.innerHTML = `<span aria-hidden="true">${selectedTheme.icon}</span> Theme: ${selectedTheme.label}`;
+		try {
+			localStorage.setItem(themeStorageKey, theme);
+		} catch {
+			// Theme persistence is optional when storage is unavailable.
+		}
+	}
+
+	let savedTheme: string | null = null;
+	try {
+		savedTheme = localStorage.getItem(themeStorageKey);
+	} catch {
+		savedTheme = null;
+	}
+	setTheme(themes.some((theme) => theme.id === savedTheme) ? (savedTheme as ThemeId) : 'classic');
+
+	themeToggle.addEventListener('click', () => {
+		const currentIndex = themes.findIndex((theme) => theme.id === root.dataset.theme);
+		setTheme(themes[(currentIndex + 1) % themes.length].id);
+	});
+
+	let audioContext: AudioContext | null = null;
+	let soundMuted = false;
+	let musicTimer: number | null = null;
+	let musicStep = 0;
+	try {
+		soundMuted = localStorage.getItem(soundStorageKey) === 'true';
+	} catch {
+		soundMuted = false;
+	}
+
+	function updateSoundToggle() {
+		soundToggle.setAttribute('aria-pressed', String(soundMuted));
+		soundToggle.setAttribute('aria-label', soundMuted ? 'Unmute arcade sound effects' : 'Mute arcade sound effects');
+		soundToggle.innerHTML = `<span aria-hidden="true">${soundMuted ? '🔇' : '🔊'}</span> Sound: ${soundMuted ? 'Off' : 'On'}`;
+	}
+
+	function getAudioContext() {
+		if (!audioContext) {
+			const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+			if (!AudioContextConstructor) return null;
+			audioContext = new AudioContextConstructor();
+		}
+		return audioContext;
+	}
+
+	function playTone(frequency: number, duration: number, startTime: number, type: OscillatorType, volume: number, endFrequency = frequency) {
+		const context = getAudioContext();
+		if (!context || soundMuted) return;
+		if (context.state === 'suspended') {
+			void context.resume().then(() => playTone(frequency, duration, context.currentTime, type, volume, endFrequency));
+			return;
+		}
+		const oscillator = context.createOscillator();
+		const gain = context.createGain();
+		oscillator.type = type;
+		oscillator.frequency.setValueAtTime(frequency, startTime);
+		oscillator.frequency.exponentialRampToValueAtTime(Math.max(1, endFrequency), startTime + duration);
+		gain.gain.setValueAtTime(0.0001, startTime);
+		gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.01);
+		gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+		oscillator.connect(gain);
+		gain.connect(context.destination);
+		oscillator.start(startTime);
+		oscillator.stop(startTime + duration + 0.02);
+	}
+
+	function playCoinSound() {
+		const context = getAudioContext();
+		if (!context || soundMuted) return;
+		const now = context.currentTime;
+		playTone(660, 0.09, now, 'square', 0.08, 990);
+		playTone(990, 0.14, now + 0.09, 'square', 0.08, 1320);
+	}
+
+	function playPowerUpSound() {
+		const context = getAudioContext();
+		if (!context || soundMuted) return;
+		const now = context.currentTime;
+		[440, 554, 659, 880].forEach((frequency, index) => {
+			playTone(frequency, 0.12, now + index * 0.07, 'triangle', 0.07, frequency * 1.15);
+		});
+	}
+
+	function playExplosionSound() {
+		const context = getAudioContext();
+		if (!context || soundMuted) return;
+		const now = context.currentTime;
+		playTone(150, 0.42, now, 'sawtooth', 0.12, 35);
+		playTone(80, 0.5, now, 'square', 0.08, 24);
+	}
+
+	function playCountdownSound(step: number) {
+		const context = getAudioContext();
+		if (!context || soundMuted) return;
+		const now = context.currentTime;
+		playTone(220 + step * 55, 0.12, now, 'square', 0.07, 220 + step * 75);
+	}
+
+	function playMusicNote() {
+		const notes = [196, 247, 294, 392, 294, 247, 220, 330];
+		playTone(notes[musicStep % notes.length], 0.28, getAudioContext()?.currentTime ?? 0, 'triangle', 0.08);
+		musicStep += 1;
+	}
+
+	function startBackgroundMusic() {
+		if (musicTimer !== null || soundMuted || !getAudioContext()) return;
+		musicStep = 0;
+		playMusicNote();
+		musicTimer = window.setInterval(playMusicNote, 360);
+	}
+
+	function stopBackgroundMusic() {
+		if (musicTimer !== null) {
+			window.clearInterval(musicTimer);
+			musicTimer = null;
+		}
+	}
+
+	updateSoundToggle();
+	soundToggle.addEventListener('click', () => {
+		soundMuted = !soundMuted;
+		try {
+			localStorage.setItem(soundStorageKey, String(soundMuted));
+		} catch {
+			// Sound preference is optional when storage is unavailable.
+		}
+		if (soundMuted) stopBackgroundMusic();
+		else if (audioContext) startBackgroundMusic();
+		updateSoundToggle();
+	});
+
+	function readBattleHistory(): BattleHistoryEntry[] {
+		try {
+			const stored = JSON.parse(localStorage.getItem(historyStorageKey) ?? '[]') as unknown;
+			if (!Array.isArray(stored)) return [];
+			return stored.filter(
+				(entry): entry is BattleHistoryEntry =>
+					!!entry &&
+					typeof entry === 'object' &&
+					typeof entry.playerOne === 'string' &&
+					typeof entry.playerTwo === 'string' &&
+					typeof entry.playerOneTotal === 'number' &&
+					typeof entry.playerTwoTotal === 'number' &&
+					(typeof entry.winner === 'string' || entry.winner === null) &&
+					typeof entry.createdAt === 'string',
+			).slice(0, maxHistoryEntries);
+		} catch {
+			return [];
+		}
+	}
+
+	function renderBattleHistory() {
+		const history = readBattleHistory();
+		historyEmpty.hidden = history.length > 0;
+		battleHistory.innerHTML = history
+			.map((entry) => {
+				const winnerText = entry.winner ? `🏆 ${entry.winner} wins` : "🤝 It's a tie";
+				const happenedAt = new Date(entry.createdAt).toLocaleString();
+				return `
+					<li>
+						<span class="battle-players">${escapeHtml(entry.playerOne)} (${entry.playerOneTotal.toLocaleString()}) vs ${escapeHtml(entry.playerTwo)} (${entry.playerTwoTotal.toLocaleString()})</span>
+						<span class="battle-winner">${winnerText}</span>
+						<time class="battle-time" datetime="${escapeHtml(entry.createdAt)}">${escapeHtml(happenedAt)}</time>
+					</li>
+				`;
+			})
+			.join('');
+	}
+
+	function saveBattleResult(entry: BattleHistoryEntry) {
+		try {
+			const history = [entry, ...readBattleHistory()].slice(0, maxHistoryEntries);
+			localStorage.setItem(historyStorageKey, JSON.stringify(history));
+			renderBattleHistory();
+		} catch {
+			status.textContent = 'Battle complete, but history could not be saved.';
+			status.className = 'status error';
+		}
+	}
+
+	clearHistoryButton.addEventListener('click', () => {
+		try {
+			localStorage.removeItem(historyStorageKey);
+		} catch {
+			status.textContent = 'Battle history could not be cleared.';
+			status.className = 'status error';
+			return;
+		}
+		renderBattleHistory();
+	});
+
+	shareResultsButton.addEventListener('click', async () => {
+		if (!currentBattleSummary) return;
+		const originalLabel = shareResultsButton.textContent;
+		try {
+			await navigator.clipboard.writeText(currentBattleSummary);
+			shareResultsButton.textContent = 'Copied to clipboard!';
+			window.setTimeout(() => {
+				shareResultsButton.textContent = originalLabel;
+			}, 1800);
+		} catch {
+			status.textContent = 'Could not copy the battle summary. Check clipboard permissions.';
+			status.className = 'status error';
+		}
+	});
+
+	function escapeHtml(value: string) {
+		const element = document.createElement('span');
+		element.textContent = value;
+		return element.innerHTML;
+	}
+
+	function isContributionData(value: unknown): value is ContributionData {
+		if (!value || typeof value !== 'object') return false;
+		const data = value as Partial<ContributionData>;
+		return (
+			typeof data.from === 'string' &&
+			typeof data.to === 'string' &&
+			typeof data.total_contributions === 'number' &&
+			Array.isArray(data.weeks) &&
+			data.weeks.every(
+				(week) =>
+					week &&
+					typeof week === 'object' &&
+					typeof week.first_day === 'string' &&
+					Array.isArray(week.contribution_days) &&
+					week.contribution_days.every(
+						(day) =>
+							day &&
+							typeof day === 'object' &&
+							typeof day.count === 'number' &&
+							typeof day.level === 'number' &&
+							typeof day.weekday === 'number',
+					),
+			)
+		);
+	}
+
+	function renderGraph(data: ContributionData) {
+		return data.weeks
+			.flatMap((week) =>
+				week.contribution_days.map((day) => {
+					const date = new Date(`${week.first_day}T00:00:00Z`);
+					date.setUTCDate(date.getUTCDate() + day.weekday);
+					return { day, date: date.toISOString().slice(0, 10) };
+				}),
+			)
+			.map(({ day, date }) => {
+				const color = colors[Math.min(Math.max(day.level, 0), colors.length - 1)];
+				const label = `${date}: ${day.count} contribution${day.count === 1 ? '' : 's'}`;
+				return `<span class="day" role="img" tabindex="0" aria-label="${label}" style="background-color: ${color}" title="${label}"></span>`;
+			})
+			.join('');
+	}
+
+	function renderContributionLegend() {
+		const swatches = colors
+			.map((color, index) => `<span class="legend-swatch" role="img" aria-label="Contribution level ${index} of ${colors.length - 1}" style="background-color: ${color}"></span>`)
+			.join('');
+		return `
+			<div class="contribution-legend" aria-label="Contribution intensity: Less to More">
+				<span>Less</span>
+				<span class="legend-swatches">${swatches}</span>
+				<span>More</span>
+			</div>
+		`;
+	}
+
+	function getLongestStreak(data: ContributionData) {
+		const activeDates = data.weeks
+			.flatMap((week) =>
+				week.contribution_days
+					.filter((day) => day.count > 0)
+					.map((day) => {
+						const date = new Date(`${week.first_day}T00:00:00Z`);
+						date.setUTCDate(date.getUTCDate() + day.weekday);
+						return date.getTime();
+					}),
+			)
+			.sort((first, second) => first - second);
+		let longest = 0;
+		let current = 0;
+		let previousDate = 0;
+		const dayInMilliseconds = 24 * 60 * 60 * 1000;
+
+		activeDates.forEach((date) => {
+			if (date === previousDate + dayInMilliseconds) {
+				current += 1;
+			} else if (date !== previousDate) {
+				current = 1;
+			}
+			longest = Math.max(longest, current);
+			previousDate = date;
+		});
+
+		return longest;
+	}
+
+	function renderPlayer(card: HTMLElement, username: string, data: ContributionData) {
+		card.className = 'result-card result-reveal';
+		card.innerHTML = `
+			<h2><a href="https://github.com/${encodeURIComponent(username)}" target="_blank" rel="noopener noreferrer">${escapeHtml(username)}</a></h2>
+			<div class="result-content">
+				<p class="total"><strong>${data.total_contributions.toLocaleString()}</strong> contributions</p>
+				<p class="date-range">${escapeHtml(data.from)} to ${escapeHtml(data.to)}</p>
+				<div class="graph" aria-label="${escapeHtml(username)} contribution graph">${renderGraph(data)}</div>
+				${renderContributionLegend()}
+				<p class="streak">🔥 Longest Streak: ${getLongestStreak(data)} days</p>
+			</div>
+		`;
+	}
+
+	function setWinnerMessage(message: string, className: string) {
+		winner.className = className;
+		const label = winner.querySelector<HTMLElement>('.winner-label');
+		if (label) label.textContent = message;
+	}
+
+	function renderError(card: HTMLElement, username: string, message: string) {
+		card.className = 'result-card has-error result-reveal';
+		card.innerHTML = `
+			<h2>⚠️ ${escapeHtml(username || 'Player')}</h2>
+			<div class="result-content">
+				<p class="error"><strong>DATA ERROR</strong></p>
+				<p class="error">${escapeHtml(message)}</p>
+				<p class="error-hint">Check the username and try again.</p>
+			</div>
+		`;
+	}
+
+	function clearFieldErrors() {
+		[playerOneInput, playerTwoInput].forEach((input, index) => {
+			input.removeAttribute('aria-invalid');
+			errors[index].textContent = '';
+		});
+	}
+
+	function validateUsernames(usernames: string[]) {
+		let firstInvalidInput: HTMLInputElement | null = null;
+		usernames.forEach((username, index) => {
+			if (username) return;
+			const input = index === 0 ? playerOneInput : playerTwoInput;
+			input.setAttribute('aria-invalid', 'true');
+			errors[index].textContent = `Player ${index + 1} username is required.`;
+			firstInvalidInput ??= input;
+		});
+		return firstInvalidInput;
+	}
+
+	async function fetchContributions(username: string): Promise<ContributionData> {
+		const response = await fetch(`/api/contributions/${encodeURIComponent(username)}`);
+		const body = (await response.json()) as ContributionData | { error?: string };
+
+		if (!response.ok) {
+			throw new Error((body as { error?: string }).error || 'Unable to load contributions.');
+		}
+
+		if (!isContributionData(body)) {
+			throw new Error('Contribution data was incomplete or invalid.');
+		}
+
+		return body;
+	}
+
+	function wait(duration: number) {
+		return new Promise<void>((resolve) => window.setTimeout(resolve, duration));
+	}
+
+	async function runCountdown() {
+		countdownOverlay.hidden = false;
+		countdownOverlay.className = 'countdown-overlay';
+		for (const step of ['3...', '2...', '1...']) {
+			countdownLabel.textContent = step;
+			playCountdownSound(Number(step[0]));
+			countdownLabel.style.animation = 'none';
+			void countdownLabel.offsetWidth;
+			countdownLabel.style.animation = '';
+			await wait(1000);
+		}
+		countdownOverlay.className = 'countdown-overlay fight';
+		countdownLabel.textContent = '⚡ FIGHT! ⚡';
+		playPowerUpSound();
+		countdownLabel.style.animation = 'none';
+		void countdownLabel.offsetWidth;
+		countdownLabel.style.animation = '';
+		await wait(1000);
+		countdownOverlay.hidden = true;
+	}
+
+	async function battle() {
+		const usernames = [playerOneInput.value.trim(), playerTwoInput.value.trim()];
+		winner.hidden = true;
+		shareResultsButton.hidden = true;
+		currentBattleSummary = '';
+		status.textContent = '';
+		clearFieldErrors();
+
+		const firstInvalidInput = validateUsernames(usernames);
+		if (firstInvalidInput) {
+			status.textContent = '⚠️ Enter both GitHub usernames to start the battle.';
+			status.className = 'status error';
+			firstInvalidInput.focus();
+			return;
+		}
+
+		battleButton.disabled = true;
+		battleButton.textContent = '⏳ Loading...';
+		status.textContent = 'Fetching contribution data...';
+		status.className = 'status loading';
+		playCoinSound();
+		startBackgroundMusic();
+
+		try {
+			status.textContent = 'Get ready...';
+			await runCountdown();
+			status.textContent = 'Fetching contribution data...';
+			cards.forEach((card, index) => {
+				card.className = 'result-card loading-card';
+				card.innerHTML = `<h2>${escapeHtml(usernames[index])}</h2><div class="result-content"><p class="placeholder">Loading...</p></div>`;
+			});
+
+			const results = await Promise.allSettled(usernames.map(fetchContributions));
+			const successfulResults: Array<{ index: number; data: ContributionData }> = [];
+
+			results.forEach((result, index) => {
+				if (result.status === 'fulfilled') {
+					renderPlayer(cards[index], usernames[index], result.value);
+					successfulResults.push({ index, data: result.value });
+				} else {
+					renderError(cards[index], usernames[index], result.reason instanceof Error ? result.reason.message : 'Unable to load contributions.');
+				}
+			});
+
+			if (successfulResults.length === 2) {
+				const [playerOne, playerTwo] = successfulResults.map((result) => result.data);
+				const playerOneWins = playerOne.total_contributions > playerTwo.total_contributions;
+				const isTie = playerOne.total_contributions === playerTwo.total_contributions;
+				const winnerName = isTie ? null : playerOneWins ? usernames[0] : usernames[1];
+				const winnerSummary = winnerName ? `${winnerName} won` : "It's a tie";
+				if (playerOne.total_contributions === playerTwo.total_contributions) {
+					setWinnerMessage('🤝 IT\'S A TIE! 🤝', 'winner tie');
+				} else {
+					setWinnerMessage(`🏆 ${winnerName} WINS! 🏆`, 'winner win');
+				}
+				winner.hidden = false;
+				currentBattleSummary = [
+					'⚔️ Mona Mayhem Battle Results',
+					`${usernames[0]}: ${playerOne.total_contributions.toLocaleString()} contributions`,
+					`${usernames[1]}: ${playerTwo.total_contributions.toLocaleString()} contributions`,
+					`🏆 ${winnerSummary}`,
+				].join('\n');
+				shareResultsButton.hidden = false;
+				status.textContent = 'Battle complete!';
+				status.className = 'status success';
+				playPowerUpSound();
+				saveBattleResult({
+					playerOne: usernames[0],
+					playerTwo: usernames[1],
+					playerOneTotal: playerOne.total_contributions,
+					playerTwoTotal: playerTwo.total_contributions,
+					winner: winnerName,
+					createdAt: new Date().toISOString(),
+				});
+			} else {
+				status.textContent = 'Some contribution data could not be loaded.';
+				status.className = 'status error';
+				playExplosionSound();
+			}
+		} catch {
+			cards.forEach((card, index) => {
+				renderError(cards[index], usernames[index], 'Unable to display contribution data.');
+			});
+			status.textContent = 'Unable to display the battle results. Please try again.';
+			status.className = 'status error';
+			playExplosionSound();
+		} finally {
+			countdownOverlay.hidden = true;
+			battleButton.disabled = false;
+			battleButton.textContent = '⚔️ Battle!';
+		}
+	}
+
+	form.addEventListener('submit', (event) => {
+		event.preventDefault();
+		void battle();
+	});
+
+	[playerOneInput, playerTwoInput].forEach((input) => {
+		input.addEventListener('input', () => {
+			input.removeAttribute('aria-invalid');
+			errors[input === playerOneInput ? 0 : 1].textContent = '';
+			if (status.classList.contains('error')) {
+				status.textContent = '';
+				status.className = 'status';
+			}
+		});
+		input.addEventListener('keydown', (event) => {
+			if (event.key === 'Enter') {
+				event.preventDefault();
+				form.requestSubmit();
+			}
+		});
+	});
+
+	const query = new URLSearchParams(window.location.search);
+	playerOneInput.value = query.get('playerOne')?.trim() ?? '';
+	playerTwoInput.value = query.get('playerTwo')?.trim() ?? '';
+	if (playerOneInput.value && playerTwoInput.value) {
+		void battle();
+	}
+
+	renderBattleHistory();
+</script>
+</body>
 </html>
